@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日報ジェネレーター</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📝</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d1117;--surface:#161b27;--surface2:#1e2438;--surface3:#252b40;--border:#2a3050;--accent:#5b8af5;--accent2:#7ee8a2;--accent3:#f5c842;--accent4:#f07878;--text:#e2e8f4;--text-muted:#6e7a9a;--text-sub:#9aa3bc;--radius:12px;--radius-sm:8px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;}
+.tab-bar{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.tab-btn{flex:1;padding:14px 8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);font-family:'Noto Sans JP',sans-serif;font-size:0.82rem;font-weight:500;cursor:pointer;transition:all 0.2s;letter-spacing:0.04em;}
+.tab-btn:hover{color:var(--text-sub);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn .ti{display:block;font-size:1.1rem;margin-bottom:3px;}
+.tab-content{display:none;padding:24px 16px 80px;max-width:800px;margin:0 auto;}
+.tab-content.active{display:block;}
+.section-title{font-family:'Zen Kaku Gothic New',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:18px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px;}
+.card-label{font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.card-label .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.badge{font-size:0.65rem;font-weight:400;text-transform:none;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;color:var(--text-muted);margin-left:auto;}
+input[type=text],input[type=password],textarea,select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:0.88rem;padding:10px 13px;outline:none;transition:border-color 0.2s;line-height:1.7;}
+textarea{resize:vertical;line-height:1.9;}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+::placeholder{color:var(--text-muted);}
+.hint{font-size:0.72rem;color:var(--text-muted);margin-top:7px;line-height:1.6;}
+.task-list{display:flex;flex-direction:column;gap:6px;}
+.task-row{display:flex;align-items:center;gap:8px;}
+.task-row select{width:52px;flex-shrink:0;padding:8px 4px;text-align:center;font-size:1rem;}
+.task-row input{flex:1;}
+.task-del{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);cursor:pointer;padding:6px 10px;font-size:0.8rem;flex-shrink:0;transition:all 0.15s;}
+.task-del:hover{background:rgba(240,120,120,0.1);border-color:var(--accent4);color:var(--accent4);}
+.add-task-btn{background:none;border:1px dashed var(--border);border-radius:var(--radius-sm);color:var(--text-muted);cursor:pointer;padding:9px;font-size:0.82rem;width:100%;margin-top:8px;transition:all 0.15s;font-family:'Noto Sans JP',sans-serif;}
+.add-task-btn:hover{border-color:var(--accent);color:var(--accent);}
+.carryover-banner{display:none;align-items:center;gap:10px;background:rgba(126,232,162,0.1);border:1px solid rgba(126,232,162,0.3);border-radius:10px;padding:12px 16px;font-size:0.83rem;color:var(--accent2);margin-bottom:12px;}
+.emphasis-card{border-color:rgba(126,232,162,0.2);background:linear-gradient(135deg,var(--surface),rgba(126,232,162,0.03));}
+.emphasis-card .card-label{color:var(--accent2);}
+.emphasis-card .card-label .dot{background:var(--accent2);}
+.emphasis-card textarea:focus{border-color:var(--accent2);}
+.gen-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),#3a6fe8);border:none;border-radius:var(--radius);color:#fff;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.07em;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(91,138,245,0.3);margin-top:6px;}
+.gen-btn:hover{opacity:0.9;transform:translateY(-1px);}
+.prompt-btn{width:100%;padding:13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-sub);font-family:'Zen Kaku Gothic New',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:10px;}
+.prompt-btn:hover{background:var(--surface3);color:var(--text);}
+.prompt-btn.copied{border-color:var(--accent2);color:var(--accent2);}
+.save-btn{width:100%;padding:13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-sub);font-family:'Zen Kaku Gothic New',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;transition:all 0.2s;}
+.save-btn:hover{background:var(--surface3);color:var(--text);}
+.save-btn.saved{border-color:var(--accent2);color:var(--accent2);}
+.result-wrap{display:none;}
+.result-wrap.visible{display:block;}
+.result-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:14px;}
+.result-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;font-size:0.78rem;font-weight:700;letter-spacing:0.08em;color:var(--accent2);text-transform:uppercase;}
+.copy-all-btn{background:linear-gradient(135deg,var(--accent2),#4ec97a);border:none;border-radius:6px;color:#0d1117;font-family:'Zen Kaku Gothic New',sans-serif;font-size:0.8rem;font-weight:700;padding:6px 16px;cursor:pointer;transition:all 0.2s;}
+.copy-all-btn.copied{background:var(--surface3);color:var(--accent2);border:1px solid var(--accent2);}
+.report-text{font-size:0.92rem;line-height:2.1;white-space:pre-wrap;color:var(--text);background:var(--surface2);border-radius:var(--radius-sm);padding:16px;border:1px solid var(--border);max-height:500px;overflow-y:auto;}
+.apply-btn{width:100%;padding:14px;background:linear-gradient(135deg,#3a7a5a,#2a6a4a);border:none;border-radius:var(--radius);color:#fff;font-family:'Zen Kaku Gothic New',sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;transition:all 0.2s;margin-bottom:10px;}
+.cw-btn{width:100%;padding:14px;background:linear-gradient(135deg,#e05a3a,#c04020);border:none;border-radius:var(--radius);color:#fff;font-family:'Zen Kaku Gothic New',sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;transition:all 0.2s;margin-bottom:10px;}
+.cw-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.regen-btn{width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-muted);font-family:'Noto Sans JP',sans-serif;font-size:0.88rem;cursor:pointer;transition:all 0.2s;}
+.regen-btn:hover{background:var(--surface3);color:var(--text);}
+.error-msg{background:rgba(240,120,120,0.1);border:1px solid rgba(240,120,120,0.3);border-radius:8px;color:#f09090;font-size:0.84rem;padding:12px 16px;display:none;margin-bottom:12px;}
+.success-msg{background:rgba(126,232,162,0.1);border:1px solid rgba(126,232,162,0.3);border-radius:8px;color:var(--accent2);font-size:0.84rem;padding:12px 16px;display:none;margin-bottom:12px;}
+.info-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.info-label{font-size:0.8rem;color:var(--text-muted);width:120px;flex-shrink:0;}
+.comment-card-today{border-color:rgba(245,200,66,0.25);}
+.comment-card-today .card-label{color:#f5c842;}
+.comment-card-today .card-label .dot{background:#f5c842;}
+.comment-card-today textarea:focus{border-color:#f5c842;}
+.comment-card-tomorrow{border-color:rgba(126,232,162,0.25);}
+.comment-card-tomorrow .card-label{color:#7ee8a2;}
+.comment-card-tomorrow .card-label .dot{background:#7ee8a2;}
+.comment-card-tomorrow textarea:focus{border-color:#7ee8a2;}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:7px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('input')"><span class="ti">&#x270F;&#xFE0F;</span>&#x4ECA;&#x65E5;&#x306E;&#x5165;&#x529B;</button>
+  <button class="tab-btn" onclick="switchTab('result')"><span class="ti">&#x1F4CB;</span>&#x65E5;&#x5831;&#x5168;&#x6587;</button>
+  <button class="tab-btn" onclick="switchTab('settings')"><span class="ti">&#x2699;&#xFE0F;</span>&#x8A2D;&#x5B9A;</button>
+</div>
+
+<div class="tab-content active" id="tab-input">
+  <div class="section-title">&#x1F4C5; &#x4ECA;&#x65E5;&#x306E;&#x696D;&#x52D9;&#x3092;&#x5165;&#x529B;</div>
+  <div class="carryover-banner" id="carryover-banner"></div>
+  <div class="card">
+    <div class="card-label"><span class="dot"></span>&#x672C;&#x65E5;&#x306E;&#x30BF;&#x30B9;&#x30AF;</div>
+    <div class="task-list" id="today-task-list"></div>
+    <button class="add-task-btn" onclick="addTask('today')">&#xFF0B; &#x30BF;&#x30B9;&#x30AF;&#x3092;&#x8FFD;&#x52A0;</button>
+    <p class="hint">Enter&#x30AD;&#x30FC;&#x3067;&#x6B21;&#x306E;&#x30BF;&#x30B9;&#x30AF;&#x3078;&#x3002;&#x30B9;&#x30C6;&#x30FC;&#x30BF;&#x30B9;&#x306F; &#x2705;&#x5B8C;&#x4E86; / &#x1F300;&#x9032;&#x884C;&#x4E2D; / &#x2B1C;&#xFE0F;&#x672A;&#x7740;&#x624B; &#x304B;&#x3089;&#x9078;&#x629E;&#x3002;</p>
+  </div>
+  <div class="card">
+    <div class="card-label"><span class="dot"></span>&#x7FCC;&#x55B6;&#x696D;&#x65E5;&#x306E;&#x30BF;&#x30B9;&#x30AF;</div>
+    <div class="task-list" id="tomorrow-task-list"></div>
+    <button class="add-task-btn" onclick="addTask('tomorrow')">&#xFF0B; &#x30BF;&#x30B9;&#x30AF;&#x3092;&#x8FFD;&#x52A0;</button>
+    <p class="hint">&#x3053;&#x3053;&#x306B;&#x5165;&#x308C;&#x305F;&#x30BF;&#x30B9;&#x30AF;&#x306F;&#x7FCC;&#x55B6;&#x696D;&#x65E5;&#x306E;&#x671D;&#x306B;&#x300C;&#x672C;&#x65E5;&#x306E;&#x30BF;&#x30B9;&#x30AF;&#x300D;&#x3078;&#x81EA;&#x52D5;&#x3067;&#x5F15;&#x304D;&#x7D99;&#x304C;&#x308C;&#x307E;&#x3059;&#x3002;</p>
+  </div>
+  <div class="card emphasis-card">
+    <div class="card-label"><span class="dot"></span>&#x91CD;&#x70B9;&#x7684;&#x306B;&#x5165;&#x308C;&#x305F;&#x3044;&#x3053;&#x3068; <span class="badge">&#x4EFB;&#x610F;</span></div>
+    <textarea id="emphasis" rows="3" placeholder="&#x4F8B;&#xFF09;&#x4ECA;&#x65E5;&#x306E;1on1&#x3067;&#x91CD;&#x8981;&#x306A;&#x8AB2;&#x984C;&#x304C;&#x898B;&#x3048;&#x3066;&#x304D;&#x305F;&#x3053;&#x3068;&#x3092;&#x5F37;&#x8ABF;&#x3057;&#x305F;&#x3044;&#10;&#x4F8B;&#xFF09;&#x30C1;&#x30FC;&#x30E0;&#x3078;&#x306E;&#x611F;&#x8B1D;&#x3092;&#x5165;&#x308C;&#x3066;&#x307B;&#x3057;&#x3044;&#10;&#xFF08;&#x7A7A;&#x6B04;&#x306E;&#x5834;&#x5408;&#x306F;&#x696D;&#x52D9;&#x5185;&#x5BB9;&#x304B;&#x3089;AI&#x304C;&#x81EA;&#x52D5;&#x5224;&#x65AD;&#x3057;&#x307E;&#x3059;&#xFF09;"></textarea>
+    <p class="hint">&#x300C;&#x30B3;&#x30E1;&#x30F3;&#x30C8;&#x751F;&#x6210;&#x7528;&#x30D7;&#x30ED;&#x30F3;&#x30D7;&#x30C8;&#x3092;&#x30B3;&#x30D4;&#x30FC;&#x300D;&#x30DC;&#x30BF;&#x30F3;&#x3092;&#x62BC;&#x3059;&#x3068;&#x3001;&#x3053;&#x3053;&#x306E;&#x5185;&#x5BB9;&#x3092;&#x4E2D;&#x5FC3;&#x306B;&#x30B3;&#x30E1;&#x30F3;&#x30C8;&#x751F;&#x6210;&#x7528;&#x306E;&#x6587;&#x7AE0;&#x304C;&#x30B3;&#x30D4;&#x30FC;&#x3055;&#x308C;&#x307E;&#x3059;&#x3002;</p>
+  </div>
+  <div class="error-msg" id="error-msg"></div>
+  <button class="gen-btn" onclick="generate()">&#x1F4DD; &#x65E5;&#x5831;&#x30D5;&#x30A9;&#x30FC;&#x30E0;&#x3092;&#x4F5C;&#x6210;&#x3059;&#x308B;</button>
+  <button class="prompt-btn" id="prompt-btn" onclick="copyPrompt()">&#x1F4AC; &#x30B3;&#x30E1;&#x30F3;&#x30C8;&#x751F;&#x6210;&#x7528;&#x30D7;&#x30ED;&#x30F3;&#x30D7;&#x30C8;&#x3092;&#x30B3;&#x30D4;&#x30FC;</button>
+</div>
+
+<div class="tab-content" id="tab-result">
+  <div class="section-title">&#x1F4CB; &#x751F;&#x6210;&#x3055;&#x308C;&#x305F;&#x65E5;&#x5831;</div>
+  <div id="result-empty" style="color:var(--text-muted);font-size:0.9rem;text-align:center;padding:48px 0;">
+    &#x307E;&#x305A;&#x300C;&#x4ECA;&#x65E5;&#x306E;&#x5165;&#x529B;&#x300D;&#x30BF;&#x30D6;&#x3067;&#x30BF;&#x30B9;&#x30AF;&#x3092;&#x5165;&#x529B;&#x3057;&#x3001;<br>&#x300C;&#x65E5;&#x5831;&#x30D5;&#x30A9;&#x30FC;&#x30E0;&#x3092;&#x4F5C;&#x6210;&#x3059;&#x308B;&#x300D;&#x30DC;&#x30BF;&#x30F3;&#x3092;&#x62BC;&#x3057;&#x3066;&#x304F;&#x3060;&#x3055;&#x3044;&#x3002;
+  </div>
+  <div class="result-wrap" id="result-wrap">
+    <div class="result-box">
+      <div class="result-header">
+        <span>&#x2705; &#x5B8C;&#x6210;&#x3057;&#x305F;&#x65E5;&#x5831;</span>
+        <button class="copy-all-btn" id="copy-all-btn" onclick="copyAll()">&#x5168;&#x6587;&#x30B3;&#x30D4;&#x30FC;</button>
+      </div>
+      <div class="report-text" id="report-output"></div>
+    </div>
+    <div class="card comment-card-today">
+      <div class="card-label"><span class="dot"></span>&#x672C;&#x65E5;&#x306E;&#x6210;&#x679C;&#x3068;&#x6C17;&#x3065;&#x304D; <span class="badge">Claude&#x304B;&#x3089;&#x30B3;&#x30D4;&#x30DA;</span></div>
+      <textarea id="today-comment" rows="4" placeholder="Claude&#x306B;&#x751F;&#x6210;&#x3057;&#x3066;&#x3082;&#x3089;&#x3063;&#x305F;&#x30B3;&#x30E1;&#x30F3;&#x30C8;&#x3092;&#x3053;&#x3053;&#x306B;&#x8CBC;&#x308A;&#x4ED8;&#x3051;&#x3066;&#x304F;&#x3060;&#x3055;&#x3044;"></textarea>
+    </div>
+    <div class="card comment-card-tomorrow">
+      <div class="card-label"><span class="dot"></span>&#x7FCC;&#x55B6;&#x696D;&#x65E5;&#x306E;&#x30B3;&#x30DF;&#x30C3;&#x30C8; <span class="badge">Claude&#x304B;&#x3089;&#x30B3;&#x30D4;&#x30DA;</span></div>
+      <textarea id="tomorrow-comment" rows="3" placeholder="Claude&#x306B;&#x751F;&#x6210;&#x3057;&#x3066;&#x3082;&#x3089;&#x3063;&#x305F;&#x30B3;&#x30E1;&#x30F3;&#x30C8;&#x3092;&#x3053;&#x3053;&#x306B;&#x8CBC;&#x308A;&#x4ED8;&#x3051;&#x3066;&#x304F;&#x3060;&#x3055;&#x3044;"></textarea>
+    </div>
+    <button class="apply-btn" onclick="applyComments()">&#x1F4CB; &#x30B3;&#x30E1;&#x30F3;&#x30C8;&#x3092;&#x65E5;&#x5831;&#x306B;&#x53CD;&#x6620;&#x3059;&#x308B;</button>
+    <div class="success-msg" id="success-msg"></div>
+    <div class="error-msg" id="error-msg2"></div>
+    <button class="cw-btn" id="cw-btn" onclick="postToChatwork()">&#x1F4E4; Chatwork&#x306B;&#x6295;&#x7A3F;&#x3059;&#x308B;</button>
+    <button class="regen-btn" onclick="generate()">&#x1F504; &#x65E5;&#x5831;&#x30D5;&#x30A9;&#x30FC;&#x30E0;&#x3092;&#x518D;&#x751F;&#x6210;&#x3059;&#x308B;</button>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-settings">
+  <div class="section-title">&#x2699;&#xFE0F; &#x56FA;&#x5B9A;&#x60C5;&#x5831;&#x306E;&#x8A2D;&#x5B9A;</div>
+  <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:20px;line-height:1.7;">&#x3053;&#x3053;&#x3067;&#x8A2D;&#x5B9A;&#x3057;&#x305F;&#x60C5;&#x5831;&#x306F;&#x30D6;&#x30E9;&#x30A6;&#x30B6;&#x306B;&#x4FDD;&#x5B58;&#x3055;&#x308C;&#x3001;&#x6BCE;&#x56DE;&#x306E;&#x65E5;&#x5831;&#x306B;&#x81EA;&#x52D5;&#x3067;&#x633F;&#x5165;&#x3055;&#x308C;&#x307E;&#x3059;&#x3002;</p>
+  <div class="card">
+    <div class="card-label"><span class="dot"></span>&#x57FA;&#x672C;&#x60C5;&#x5831;</div>
+    <div class="info-row"><span class="info-label">&#x540D;&#x524D;</span><input type="text" id="s-name" placeholder="&#x4F8B;&#xFF09;&#x9577;&#x8C37;&#x5DDD;"></div>
+    <div class="info-row"><span class="info-label">&#x6328;&#x62F6;&#x6587;</span><input type="text" id="s-greeting" placeholder="&#x4F8B;&#xFF09;&#x304A;&#x75B2;&#x308C;&#x69D8;&#x3067;&#x3059;"></div>
+  </div>
+  <div class="card">
+    <div class="card-label"><span class="dot"></span>&#x4E0B;&#x671F;&#x76EE;&#x6A19;&#xFF08;&#x56FA;&#x5B9A;&#x30C6;&#x30AD;&#x30B9;&#x30C8;&#xFF09;</div>
+    <textarea id="s-goals" rows="7" placeholder="&#x4F8B;&#xFF09;&#10;1.&#x5C5E;&#x4EBA;&#x5316;&#x696D;&#x52D9;&#x306E;&#x68DA;&#x5378;&#x30FB;&#x6574;&#x5099;&#x30FB;&#x5171;&#x6709;&#10;2.DX&#x4E3B;&#x8981;&#x65BD;&#x7B56;&#x306E;&#x904B;&#x7528;&#x958B;&#x59CB;&#x9032;"></textarea>
+    <p class="hint">&#x671F;&#x3084;&#x6708;&#x304C;&#x5909;&#x308F;&#x3063;&#x305F;&#x3089;&#x3053;&#x3053;&#x3092;&#x7DE8;&#x96C6;&#x3057;&#x3066;&#x4FDD;&#x5B58;&#x3057;&#x3066;&#x304F;&#x3060;&#x3055;&#x3044;&#x3002;</p>
+  </div>
+  <div class="card" style="border-color:rgba(240,120,120,0.2);background:linear-gradient(135deg,var(--surface),rgba(240,120,120,0.03));">
+    <div class="card-label" style="color:var(--accent4);"><span class="dot" style="background:var(--accent4);"></span>Chatwork&#x8A2D;&#x5B9A;</div>
+    <div class="info-row"><span class="info-label">API&#x30C8;&#x30FC;&#x30AF;&#x30F3;</span><input type="password" id="s-cw-token" placeholder="Chatwork&#x306EAPI&#x30C8;&#x30FC;&#x30AF;&#x30F3;&#x3092;&#x5165;&#x529B;"></div>
+    <div class="info-row"><span class="info-label">&#x30EB;&#x30FC;&#x30E0;ID</span><input type="text" id="s-cw-room" placeholder="&#x6295;&#x7A3F;&#x5148;&#x306E;&#x30EB;&#x30FC;&#x30E0;ID&#x3092;&#x5165;&#x529B;"></div>
+    <p class="hint">&#x26A0;&#xFE0F; API&#x30C8;&#x30FC;&#x30AF;&#x30F3;&#x306F;&#x3053;&#x306E;&#x30D6;&#x30E9;&#x30A6;&#x30B6;&#x306B;&#x306E;&#x307F;&#x4FDD;&#x5B58;&#x3055;&#x308C;&#x307E;&#x3059;&#x3002;</p>
+  </div>
+  <button class="save-btn" id="save-btn" onclick="saveSettings()">&#x1F4BE; &#x8A2D;&#x5B9A;&#x3092;&#x4FDD;&#x5B58;&#x3059;&#x308B;</button>
+</div>
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbwp4MIB3ENtnhQKuaHRuwRqVuZKsA_zIL9iwhtES0Pn1xxTYG_kYlyUeD_QElbyd8H8/exec';
+var todayTasks = [];
+var tomorrowTasks = [];
+var STATUS_OPTIONS = [
+  {icon:'✅',label:'完了'},
+  {icon:'🌀',label:'進行中'},
+  {icon:'⬜️',label:'未着手'}
+];
+
+function loadSettings(){
+  var d={name:'',greeting:'お疲れ様です',goals:'1.属人化業務の棚卸・整備・共有\n2.DX主要施策の運用開始進\n3.管理部起因の誤請求防止・業務改善アイデア\n4.出張手配システム導入・運用開始\n5.経費倫理向上PJでの計画推進',cwToken:'',cwRoom:''};
+  try{var s=JSON.parse(localStorage.getItem('nippou_settings')||'{}');return Object.assign({},d,s);}
+  catch(e){return d;}
+}
+
+function saveSettings(){
+  var s={name:document.getElementById('s-name').value,greeting:document.getElementById('s-greeting').value,goals:document.getElementById('s-goals').value,cwToken:document.getElementById('s-cw-token').value,cwRoom:document.getElementById('s-cw-room').value};
+  localStorage.setItem('nippou_settings',JSON.stringify(s));
+  var b=document.getElementById('save-btn');
+  b.textContent='✅ 保存しました';b.classList.add('saved');
+  setTimeout(function(){b.textContent='💾 設定を保存する';b.classList.remove('saved');},2000);
+}
+
+function applySettingsToForm(){
+  var s=loadSettings();
+  document.getElementById('s-name').value=s.name;
+  document.getElementById('s-greeting').value=s.greeting;
+  document.getElementById('s-goals').value=s.goals;
+  document.getElementById('s-cw-token').value=s.cwToken;
+  document.getElementById('s-cw-room').value=s.cwRoom;
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-content').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.tab-btn').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('.tab-btn')[['input','result','settings'].indexOf(tab)].classList.add('active');
+}
+
+function addTask(type){
+  var list=type==='today'?todayTasks:tomorrowTasks;
+  var def=type==='today'?'✅':'⬜️';
+  list.push({id:Date.now()+Math.random(),status:def,text:''});
+  renderTasks(type);
+  setTimeout(function(){
+    var inp=document.querySelectorAll('#'+type+'-task-list .task-row input');
+    if(inp.length)inp[inp.length-1].focus();
+  },50);
+}
+
+function removeTask(type,id){
+  if(type==='today')todayTasks=todayTasks.filter(function(t){return t.id!==id;});
+  else tomorrowTasks=tomorrowTasks.filter(function(t){return t.id!==id;});
+  renderTasks(type);
+}
+
+function updateTask(type,id,field,value){
+  var list=type==='today'?todayTasks:tomorrowTasks;
+  var task=list.find(function(t){return t.id===id;});
+  if(task)task[field]=value;
+}
+
+function renderTasks(type){
+  var list=type==='today'?todayTasks:tomorrowTasks;
+  var container=document.getElementById(type+'-task-list');
+  container.innerHTML='';
+  list.forEach(function(task){
+    var row=document.createElement('div');row.className='task-row';
+    var sel=document.createElement('select');
+    STATUS_OPTIONS.forEach(function(opt){
+      var o=document.createElement('option');o.value=opt.icon;o.textContent=opt.icon;
+      if(opt.icon===task.status)o.selected=true;sel.appendChild(o);
+    });
+    sel.onchange=(function(t){return function(){updateTask(type,t.id,'status',sel.value);};})(task);
+    var inp=document.createElement('input');inp.type='text';inp.value=task.text;inp.placeholder='タスク名を入力';
+    inp.oninput=(function(t){return function(){updateTask(type,t.id,'text',inp.value);};})(task);
+    inp.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();addTask(type);}};
+    var del=document.createElement('button');del.className='task-del';del.textContent='×';
+    del.onclick=(function(t){return function(){removeTask(type,t.id);};})(task);
+    row.appendChild(sel);row.appendChild(inp);row.appendChild(del);
+    container.appendChild(row);
+  });
+}
+
+function saveTomorrowTasksToStorage(){
+  var valid=tomorrowTasks.filter(function(t){return t.text.trim();});
+  var today=new Date();
+  var dk=today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
+  localStorage.setItem('nippou_saved_tomorrow',JSON.stringify({date:dk,tasks:valid}));
+}
+
+function loadCarriedOverTasks(){
+  try{
+    var raw=localStorage.getItem('nippou_saved_tomorrow');
+    if(!raw)return null;
+    var saved=JSON.parse(raw);
+    var parts=saved.date.split('-');
+    var sd=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+    var today=new Date();today.setHours(0,0,0,0);
+    var next=new Date(sd);next.setHours(0,0,0,0);
+    do{next.setDate(next.getDate()+1);}while(next.getDay()===0||next.getDay()===6);
+    if(next.getTime()===today.getTime())return saved.tasks;
+    return null;
+  }catch(e){return null;}
+}
+
+function generate(){
+  var s=loadSettings();
+  var err=document.getElementById('error-msg');
+  err.style.display='none';
+  var vt=todayTasks.filter(function(t){return t.text.trim();});
+  var vm=tomorrowTasks.filter(function(t){return t.text.trim();});
+  if(!vt.length&&!vm.length){err.textContent='本日または翌営業日のタスクを入力してください。';err.style.display='block';return;}
+  var SP='　';
+  var now=new Date();
+  var wd=['日','月','火','水','木','金','土'];
+  var ds=(now.getMonth()+1)+'月'+now.getDate()+'日('+wd[now.getDay()]+')';
+  var name=s.name||'「名前」';
+  var gr=s.greeting||'お疲れ様です';
+  var gl=s.goals.trim();
+  var goalLines=gl?'🗒️｜下期目標
+'+gl+'
+
+':'';
+  var tl=vt.map(function(t){return t.status+SP+t.text;}).join('
+');
+  var ml=vm.length?vm.map(function(t){return t.status+SP+t.text;}).join('
+'):'（未入力）';
+  var ph='《コメントを以下に貼り付けて》';
+  var report=gr+'、'+name+'です。
+'+ds+'の日報を投稿します。
+
+'+goalLines+'🗒️｜当日の報告
+
+タスク
+'+tl+'
+
+本日の成果と気づき
+'+ph+'
+
+🗒️｜翌営業日の行動計画
+
+タスク
+'+ml+'
+
+翌営業日のコミット
+'+ph+'
+
+お疲れ様でした。';
+  document.getElementById('report-output').textContent=report;
+  document.getElementById('today-comment').value='';
+  document.getElementById('tomorrow-comment').value='';
+  document.getElementById('result-empty').style.display='none';
+  document.getElementById('result-wrap').classList.add('visible');
+  document.getElementById('success-msg').style.display='none';
+  document.getElementById('error-msg2').style.display='none';
+  saveTomorrowTasksToStorage();
+  switchTab('result');
+}
+
+function copyPrompt(){
+  var vt=todayTasks.filter(function(t){return t.text.trim();});
+  var vm=tomorrowTasks.filter(function(t){return t.text.trim();});
+  var em=document.getElementById('emphasis').value.trim();
+  var SP='　';
+  if(!vt.length&&!vm.length){alert('タスクを入力してください。');return;}
+  var tl=vt.map(function(t){return t.status+SP+t.text;}).join('
+');
+  var ml=vm.length?vm.map(function(t){return t.status+SP+t.text;}).join('
+'):'（未入力）';
+  var es=em?'
+
+【重点的に入れたいこと】
+'+em:'';
+  var prompt='以下の日報内容をもとに、「本日の成果と気づき」と「翌営業日のコミット」の2つのコメントを生成してください。温かみのある人間らしい文体で。'+es+'
+
+【本日のタスク】
+'+tl+'
+
+【翌営業日のタスク】
+'+ml;
+  navigator.clipboard.writeText(prompt).then(function(){
+    var btn=document.getElementById('prompt-btn');
+    btn.textContent='✅ コピーしました！このチャットに貼り付けてください';
+    btn.classList.add('copied');
+    setTimeout(function(){btn.textContent='💬 コメント生成用プロンプトをコピー';btn.classList.remove('copied');},3000);
+  });
+}
+
+function applyComments(){
+  var tc=document.getElementById('today-comment').value.trim();
+  var mc=document.getElementById('tomorrow-comment').value.trim();
+  var el=document.getElementById('report-output');
+  var text=el.textContent;
+  var ph='《コメントを以下に貼り付けて》';
+  if(tc)text=text.replace(ph,tc);
+  if(mc)text=text.replace(ph,mc);
+  el.textContent=text;
+  var btn=document.querySelector('.apply-btn');
+  btn.textContent='✅ 反映しました！';
+  setTimeout(function(){btn.textContent='📋 コメントを日報に反映する';},1500);
+}
+
+async function postToChatwork(){
+  var s=loadSettings();
+  var succ=document.getElementById('success-msg');
+  var err=document.getElementById('error-msg2');
+  succ.style.display='none';err.style.display='none';
+  if(!s.cwToken||!s.cwRoom){err.textContent='⚙️設定タブでAPIトークンとルームIDを入力・保存してください。';err.style.display='block';return;}
+  var msg=document.getElementById('report-output').textContent;
+  if(!msg.trim()){err.textContent='まず日報フォームを作成してください。';err.style.display='block';return;}
+  var btn=document.getElementById('cw-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Chatworkに送信中...';
+  try{
+    var res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:s.cwToken,roomId:s.cwRoom,message:msg})});
+    var data=await res.json();
+    if(data.status==='ok'){succ.textContent='✅ Chatworkへの投稿が完了しました！';succ.style.display='block';}
+    else{throw new Error('failed');}
+  }catch(e){err.textContent='❌ 投稿に失敗しました。APIトークンとルームIDを確認してください。';err.style.display='block';}
+  finally{btn.disabled=false;btn.innerHTML='📤 Chatworkに投稿する';}
+}
+
+function copyAll(){
+  var text=document.getElementById('report-output').textContent;
+  navigator.clipboard.writeText(text).then(function(){
+    var btn=document.getElementById('copy-all-btn');
+    btn.textContent='コピー済！';btn.classList.add('copied');
+    setTimeout(function(){btn.textContent='全文コピー';btn.classList.remove('copied');},2500);
+  });
+}
+
+window.addEventListener('load',function(){
+  applySettingsToForm();
+  var carried=loadCarriedOverTasks();
+  if(carried&&carried.length>0){
+    carried.forEach(function(t){
+      var st=(t.status==='✅')?'🌀':t.status;
+      todayTasks.push({id:Date.now()+Math.random(),status:st,text:t.text});
+    });
+    renderTasks('today');
+    var banner=document.getElementById('carryover-banner');
+    var msg=carried.length+'件の翌営業日タスクを「本日のタスク」に引き継ぎました';
+    banner.innerHTML='<span>📥 '+msg+'</span><button onclick="this.parentElement.style.display='none'" style="background:none;border:none;color:inherit;cursor:pointer;font-size:1.1rem;margin-left:auto;">×</button>';
+    banner.style.display='flex';
+  }else{
+    addTask('today');
+  }
+  addTask('tomorrow');
+});
+</script>
+</body>
+</html>
